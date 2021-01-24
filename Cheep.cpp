@@ -71,7 +71,7 @@ int main() {
 	for (int i = 0; i < (FRAME_START - LAG_COUNTER); ++i) {
 		advance(RNG2);
 	}
-	for (int i = (FRAME_START - LAG_COUNTER); i < 60000; ++i) {
+	for (int i = (FRAME_START - LAG_COUNTER); i < (FRAME_START - LAG_COUNTER + 32768); ++i) {
 		RNG1 = RNG2;
 		for (int cheep = 0; cheep < TOTAL_CHEEPS; ++cheep) {
 			int delay = getDelay(RNG2, slots[cheep]);
