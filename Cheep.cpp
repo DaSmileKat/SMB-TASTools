@@ -1,9 +1,10 @@
 #include <stdio.h>
  
+// Thanks to periwinkle who gave me the code for SMB's RNG and cheep spawning mechanism
 const int TOTAL_CHEEPS = 1;
-int posReq[TOTAL_CHEEPS][16] = { { 2 } };
-int delayReq[TOTAL_CHEEPS][4] = { { 16, 32, 72, 96 } };
-int speedReq[TOTAL_CHEEPS][16] = { { 1 } };
+int posReq[TOTAL_CHEEPS][16] = { { 2 } }; // Change this to which position(s) you want
+int delayReq[TOTAL_CHEEPS][4] = { { 16, 32, 72, 96 } }; // Change this to which delay(s) you want
+int speedReq[TOTAL_CHEEPS][16] = { { 1 } }; // Change this to which speed(s) you want
 int posReqLen[TOTAL_CHEEPS] = { 1 };
 int delayReqLen[TOTAL_CHEEPS] = { 4 };
 int speedReqLen[TOTAL_CHEEPS] = { 1 };
