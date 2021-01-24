@@ -1,18 +1,22 @@
 #include <stdio.h>
  
 // Thanks to periwinkle who gave me the code for SMB's RNG and cheep spawning mechanism
-const int TOTAL_CHEEPS = 1;
-int posReq[TOTAL_CHEEPS][16] = { { 2 } }; // Change this to which position(s) you want
-int delayReq[TOTAL_CHEEPS][4] = { { 16, 32, 72, 96 } }; // Change this to which delay(s) you want
-int speedReq[TOTAL_CHEEPS][16] = { { 1 } }; // Change this to which speed(s) you want
-int posReqLen[TOTAL_CHEEPS] = { 1 };
-int delayReqLen[TOTAL_CHEEPS] = { 4 };
-int speedReqLen[TOTAL_CHEEPS] = { 1 };
-int pSpeeds[TOTAL_CHEEPS] =  { 0 }; // 0: speed = 0. 1: speed between 1 and 24, 2: speed above 24 or below 0
-int slots[TOTAL_CHEEPS] =    { 3 };
+const int TOTAL_CHEEPS = 1; // Change this to the number of consecutive cheeps you want to brute-force (you must also give the requirements for each cheep)
+const int FRAME_START = 33080; // Change this to the frame that you want to start searching from
+const int LAG_COUNTER = 24; // Change this to the number of lag frames that has passed so far
+int posReq[TOTAL_CHEEPS][16] = { { 8 } }; // Change this to which position(s) you want
+int delayReq[TOTAL_CHEEPS][4] = { { 16 } }; // Change this to which delay(s) you want
+int speedReq[TOTAL_CHEEPS][16] = { { 8 } }; // Change this to which speed(s) you want
+int posReqLen[TOTAL_CHEEPS] = { 1 }; // Change this to how many valid positions there are
+int delayReqLen[TOTAL_CHEEPS] = { 1 }; // Change this to how many valid delays there are
+int speedReqLen[TOTAL_CHEEPS] = { 1 }; // Change this to how many valid speeds there are
+int pSpeeds[TOTAL_CHEEPS] =  { 2 }; // 0: speed = 0. 1: speed between 1 and 24, 2: speed above 24 or below 0
+int slots[TOTAL_CHEEPS] =    { 3 }; // Change this to the slot that the cheep is spawning in (starting from slot 0)
+
+// DO NOT CHANGE ANYTHING BELOW THIS LINE
+
 int delay = 0;
-													// Gets the byte corresponding to $(7A7+idx)
-													// Gets the byte corresponding to $(7A7+idx)
+
 unsigned char getByte(unsigned long long val, int idx) {
 	return (val >> ((6 - idx) << 3)) & 0xFF;
 }
@@ -63,10 +67,11 @@ bool noContain(int* arr, int len, int val) {
 int main() {
 	unsigned long long RNG2 = 0x00A5000000000000; // Starting value
 	unsigned long long RNG1 = RNG2;
-	for (int i = 0; i < 33031; ++i) {
+	bool noSolution = true;
+	for (int i = 0; i < (FRAME_START - LAG_COUNTER); ++i) {
 		advance(RNG2);
 	}
-	for (int i = 33031; i < 60000; ++i) {
+	for (int i = (FRAME_START - LAG_COUNTER); i < 60000; ++i) {
 		RNG1 = RNG2;
 		for (int cheep = 0; cheep < TOTAL_CHEEPS; ++cheep) {
 			int delay = getDelay(RNG2, slots[cheep]);
@@ -77,7 +82,8 @@ int main() {
 				break;
 			}
 			if (cheep == (TOTAL_CHEEPS - 1)) {
-				printf("Spawn at: %d\n", i + 24);
+				printf("Spawn at: %d\n", i + LAG_COUNTER);
+				noSolution = false;
 				//return;
 			}
 			for (int j = 0; j < delay; ++j) {
@@ -87,6 +93,8 @@ int main() {
 		RNG2 = RNG1;
 		advance(RNG2);
 	}
-	printf("No solution.");
+	if (noSolution) {
+		printf("No solution.");
+	}
 	return 0;
 }
