@@ -60,7 +60,7 @@ bool noContain(int* arr, int len, int val) {
 	return true;
 }
 
-void main() {
+int main() {
 	unsigned long long RNG2 = 0x00A5000000000000; // Starting value
 	unsigned long long RNG1 = RNG2;
 	for (int i = 0; i < 33031; ++i) {
@@ -88,4 +88,5 @@ void main() {
 		advance(RNG2);
 	}
 	printf("No solution.");
+	return 0;
 }
