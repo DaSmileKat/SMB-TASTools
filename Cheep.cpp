@@ -1,21 +1,25 @@
 #include <stdio.h>
+#include <cmath>
  
 // Thanks to periwinkle who gave me the code for SMB's RNG and cheep spawning mechanism
-const int TOTAL_CHEEPS = 1; // Change this to the number of consecutive cheeps you want to brute-force (you must also give the requirements for each cheep)
+// If you don't see the spawning time for a particular cheep if pausing is allowed, that means the fastest solution is letting it follow the previous cheep naturally without pausing
+
+const int TOTAL_CHEEPS = 2; // Change this to the number of consecutive cheeps you want to brute-force (you must also give the requirements for each cheep)
 const int FRAME_START = 33080; // Change this to the frame that you want to start searching from
 const int LAG_COUNTER = 24; // Change this to the number of lag frames that has passed so far
-int posReq[TOTAL_CHEEPS][16] = { { 8 } }; // Change this to which position(s) you want
-int delayReq[TOTAL_CHEEPS][4] = { { 16 } }; // Change this to which delay(s) you want
-int speedReq[TOTAL_CHEEPS][16] = { { 8 } }; // Change this to which speed(s) you want
-int posReqLen[TOTAL_CHEEPS] = { 1 }; // Change this to how many valid positions there are
-int delayReqLen[TOTAL_CHEEPS] = { 1 }; // Change this to how many valid delays there are
-int speedReqLen[TOTAL_CHEEPS] = { 1 }; // Change this to how many valid speeds there are
-int pSpeeds[TOTAL_CHEEPS] =  { 2 }; // 0: speed = 0. 1: speed between 1 and 24, 2: speed above 24 or below 0
-int slots[TOTAL_CHEEPS] =    { 3 }; // Change this to the slot that the cheep is spawning in (starting from slot 0)
+const int DO_PAUSE = 1; // 1: Pausing allowed, 0: Pausing not allowed
+int posReq[TOTAL_CHEEPS][16] = { { 4 }, { 4 } }; // Change this to which position(s) you want
+int delayReq[TOTAL_CHEEPS][4] = { { 16 }, { 16, 32, 72, 96 } }; // Change this to which delay(s) you want
+int speedReq[TOTAL_CHEEPS][16] = { { 4 }, { 4 } }; // Change this to which speed(s) you want
+int posReqLen[TOTAL_CHEEPS] = { 1, 1 }; // Change this to how many valid positions there are
+int delayReqLen[TOTAL_CHEEPS] = { 1, 4 }; // Change this to how many valid delays there are
+int speedReqLen[TOTAL_CHEEPS] = { 1, 1 }; // Change this to how many valid speeds there are
+int pSpeeds[TOTAL_CHEEPS] =  { 1, 1 }; // 0: speed = 0. 1: speed between 1 and 24, 2: speed above 24 or below 0
+int slots[TOTAL_CHEEPS] =    { 0, 3 }; // Change this to the slot that the cheep is spawning in (starting from slot 0)
 
 // DO NOT CHANGE ANYTHING BELOW THIS LINE
 
-int delay = 0;
+int frame = 0;
 
 unsigned char getByte(unsigned long long val, int idx) {
 	return (val >> ((6 - idx) << 3)) & 0xFF;
@@ -27,6 +31,7 @@ void advance(unsigned long long& rng) {
 	if ((a ^ b) != 0) // If non-zero, shift a 1 into the most-significant bit of $7A7
 		rng |= 0x01'00'00'00'00'00'00'00;
 	rng >>= 1;
+	++frame;
 }
 
 int getDelay(unsigned long long rng, int slot) {
@@ -71,13 +76,101 @@ int main() {
 	for (int i = 0; i < (FRAME_START - LAG_COUNTER); ++i) {
 		advance(RNG2);
 	}
+
+	if (DO_PAUSE) {
+		int fastest = FRAME_START + TOTAL_CHEEPS * 32768;
+		int solCheeps[TOTAL_CHEEPS];
+		int solFrames[TOTAL_CHEEPS];
+		int solCheeps1[TOTAL_CHEEPS];
+		int solFrames1[TOTAL_CHEEPS];
+		for (int i = 0; i < TOTAL_CHEEPS; ++i) {
+			solCheeps1[i] = 0;
+			solFrames1[i] = 0;
+			solCheeps[i] = 0;
+			solFrames[i] = 0;
+		}
+		for (int pauses = 0; pauses < pow(2, TOTAL_CHEEPS - 1); ++pauses) {
+			unsigned long long RNG3 = RNG2;
+			frame = 0;
+			int frame1 = 0;
+			for (int cheep = 0; cheep < TOTAL_CHEEPS; ) {
+				int nextPause = cheep;
+				for (; !((pauses >> nextPause) % 2) && (nextPause < (TOTAL_CHEEPS - 1)); ++nextPause) {}
+				bool done = false;
+				if (cheep > 0) {
+					frame1 = frame + 45;
+					for (int i = 0; i < 45; ++i) {
+						advance(RNG2);
+					}
+				}
+				else {
+					frame1 = 0;
+				}
+				for (int i = (FRAME_START - LAG_COUNTER + frame1); i < (FRAME_START - LAG_COUNTER + frame1 + 32768); ++i) {
+					RNG1 = RNG2;
+					frame = i - FRAME_START + LAG_COUNTER;
+					for (int cheep1 = cheep; cheep1 <= nextPause; ++cheep1) {
+						int delay = getDelay(RNG2, slots[cheep1]);
+						int speed = getSpeed(RNG2, pSpeeds[cheep1], slots[cheep1]);
+						int pos = getPos(RNG2, pSpeeds[cheep1], slots[cheep1]);
+						//printf("%d, %d, %d, %d\n", delay, speed, pos, i + 24);
+						if (noContain(delayReq[cheep1], delayReqLen[cheep1], delay) || noContain(speedReq[cheep1], speedReqLen[cheep1], speed) || noContain(posReq[cheep1], posReqLen[cheep1], pos)) {
+							break;
+						}
+						if (cheep1 == nextPause) {
+							done = true;
+							frame1 = i - FRAME_START + LAG_COUNTER;
+							break;
+						}
+						for (int j = 0; j < delay; ++j) {
+							advance(RNG2);
+						}
+					}
+					if (done) {
+						break;
+					}
+					RNG2 = RNG1;
+					advance(RNG2);
+				}
+				if (!done) {
+					frame1 = fastest;
+					break;
+				}
+				solCheeps[cheep] = 1;
+				solFrames[cheep] = frame1;
+				cheep = nextPause + 1;
+			}
+			if (frame >= fastest) {
+				for (int i = 0; i < TOTAL_CHEEPS; ++i) {
+					solCheeps[i] = 0;
+				}
+			}
+			else {
+				fastest = frame;
+				for (int i = 0; i < TOTAL_CHEEPS; ++i) {
+					solCheeps1[i] = solCheeps[i];
+					solFrames1[i] = solFrames[i] + FRAME_START;
+					solCheeps[i] = 0;
+				}
+			}
+			RNG2 = RNG3;
+		}
+		for (int i = 0; i < TOTAL_CHEEPS; ++i) {
+			if (solCheeps1[i]) {
+				printf("Spawn cheep %d at: %d\n", i + 1, solFrames1[i]);
+			}
+		}
+		return 0;
+	}
+
 	for (int i = (FRAME_START - LAG_COUNTER); i < (FRAME_START - LAG_COUNTER + 32768); ++i) {
 		RNG1 = RNG2;
+		frame = 0;
 		for (int cheep = 0; cheep < TOTAL_CHEEPS; ++cheep) {
 			int delay = getDelay(RNG2, slots[cheep]);
 			int speed = getSpeed(RNG2, pSpeeds[cheep], slots[cheep]);
 			int pos = getPos(RNG2, pSpeeds[cheep], slots[cheep]);
-		    //printf("%d, %d, %d, %d\n", delay, speed, pos, i + 24);
+			//printf("%d, %d, %d, %d\n", delay, speed, pos, i + 24);
 			if (noContain(delayReq[cheep], delayReqLen[cheep], delay) || noContain(speedReq[cheep], speedReqLen[cheep], speed) || noContain(posReq[cheep], posReqLen[cheep], pos)) {
 				break;
 			}
