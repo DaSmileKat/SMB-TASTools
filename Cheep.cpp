@@ -1,21 +1,21 @@
 #include <stdio.h>
 #include <cmath>
+#include <vector>
+#include <algorithm>
+using namespace std;
  
 // Thanks to periwinkle who gave me the code for SMB's RNG and cheep spawning mechanism
 // If you don't see the spawning time for a particular cheep if pausing is allowed, that means the fastest solution is letting it follow the previous cheep naturally without pausing
 
-const int TOTAL_CHEEPS = 2; // Change this to the number of consecutive cheeps you want to brute-force (you must also give the requirements for each cheep)
+const int TOTAL_CHEEPS = 4; // Change this to the number of consecutive cheeps you want to brute-force (you must also give the requirements for each cheep)
 const int FRAME_START = 33080; // Change this to the frame that you want to start searching from
 const int LAG_COUNTER = 24; // Change this to the number of lag frames that has passed so far
 const int DO_PAUSE = 1; // 1: Pausing allowed, 0: Pausing not allowed
-int posReq[TOTAL_CHEEPS][16] = { { 4 }, { 4 } }; // Change this to which position(s) you want
-int delayReq[TOTAL_CHEEPS][4] = { { 16 }, { 16, 32, 72, 96 } }; // Change this to which delay(s) you want
-int speedReq[TOTAL_CHEEPS][16] = { { 4 }, { 4 } }; // Change this to which speed(s) you want
-int posReqLen[TOTAL_CHEEPS] = { 1, 1 }; // Change this to how many valid positions there are
-int delayReqLen[TOTAL_CHEEPS] = { 1, 4 }; // Change this to how many valid delays there are
-int speedReqLen[TOTAL_CHEEPS] = { 1, 1 }; // Change this to how many valid speeds there are
-int pSpeeds[TOTAL_CHEEPS] =  { 1, 1 }; // 0: speed = 0. 1: speed between 1 and 24, 2: speed above 24 or below 0
-int slots[TOTAL_CHEEPS] =    { 0, 3 }; // Change this to the slot that the cheep is spawning in (starting from slot 0)
+vector<int> posReq[TOTAL_CHEEPS] = { { 4 }, { 4 }, { 4 }, { 4 } }; // Change this to which position(s) you want
+vector<int> delayReq[TOTAL_CHEEPS] = { { 16 }, { 16 }, { 16 }, { 16, 32, 72, 96 } }; // Change this to which delay(s) you want
+vector<int> speedReq[TOTAL_CHEEPS] = { { 4 }, { 4 }, { 4 }, { 4 } }; // Change this to which speed(s) you want
+int pSpeeds[TOTAL_CHEEPS] =  { 1, 1, 1, 1 }; // 0: speed = 0. 1: speed between 1 and 24, 2: speed above 24 or below 0
+int slots[TOTAL_CHEEPS] =    { 3, 2, 1, 0 }; // Change this to the slot that the cheep is spawning in (starting from slot 0)
 
 // DO NOT CHANGE ANYTHING BELOW THIS LINE
 
@@ -58,15 +58,6 @@ int getPos(unsigned long long rng, int pSpeed, int slot) {
 		}
 	}
 	return index;
-}
-
-bool noContain(int* arr, int len, int val) {
-	for (int i = 0; i < len; ++i) {
-		if (val == arr[i]) {
-			return false;
-		}
-	}
-	return true;
 }
 
 int main() {
@@ -114,7 +105,9 @@ int main() {
 						int speed = getSpeed(RNG2, pSpeeds[cheep1], slots[cheep1]);
 						int pos = getPos(RNG2, pSpeeds[cheep1], slots[cheep1]);
 						//printf("%d, %d, %d, %d\n", delay, speed, pos, i + 24);
-						if (noContain(delayReq[cheep1], delayReqLen[cheep1], delay) || noContain(speedReq[cheep1], speedReqLen[cheep1], speed) || noContain(posReq[cheep1], posReqLen[cheep1], pos)) {
+						if (find(delayReq[cheep1].begin(), delayReq[cheep1].end(), delay) == delayReq[cheep1].end() ||
+							find(posReq[cheep1].begin(), posReq[cheep1].end(), pos) == posReq[cheep1].end() ||
+							find(speedReq[cheep1].begin(), speedReq[cheep1].end(), speed) == speedReq[cheep1].end()) {
 							break;
 						}
 						if (cheep1 == nextPause) {
@@ -171,7 +164,9 @@ int main() {
 			int speed = getSpeed(RNG2, pSpeeds[cheep], slots[cheep]);
 			int pos = getPos(RNG2, pSpeeds[cheep], slots[cheep]);
 			//printf("%d, %d, %d, %d\n", delay, speed, pos, i + 24);
-			if (noContain(delayReq[cheep], delayReqLen[cheep], delay) || noContain(speedReq[cheep], speedReqLen[cheep], speed) || noContain(posReq[cheep], posReqLen[cheep], pos)) {
+			if (find(delayReq[cheep].begin(), delayReq[cheep].end(), delay) == delayReq[cheep].end() ||
+				find(posReq[cheep].begin(), posReq[cheep].end(), pos) == posReq[cheep].end() ||
+				find(speedReq[cheep].begin(), speedReq[cheep].end(), speed) == speedReq[cheep].end()) {
 				break;
 			}
 			if (cheep == (TOTAL_CHEEPS - 1)) {
