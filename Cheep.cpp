@@ -7,25 +7,21 @@ using namespace std;
 // Thanks to periwinkle who gave me the code for SMB's RNG and cheep spawning mechanism
 // If you don't see the spawning time for a particular cheep if pausing is allowed, that means the fastest solution is letting it follow the previous cheep naturally without pausing
 
-const int TOTAL_CHEEPS = 8; // Change this to the number of consecutive cheeps you want to brute-force (you must also give the requirements for each cheep)
-const int FRAME_START = 33080; // Change this to the frame that you want to start searching from
+const int TOTAL_CHEEPS = 2; // Change this to the number of consecutive cheeps you want to brute-force (you must also give the requirements for each cheep)
+const int FRAME_START = 32938; // Change this to the frame that you want to start searching from
 const int LAG_COUNTER = 24; // Change this to the number of lag frames that has passed so far
 const int DO_PAUSE = 1; // 1: Pausing allowed, 0: Pausing not allowed
 const int INPUT_TYPE = 1; // 0: Use pos/delay/speed requirements, 1: Use cheep requirements
-vector<int> posReq[TOTAL_CHEEPS] = { { 4 }, { 4 }, { 4 }, { 4 }, { 4 },{ 4 },{ 4 },{ 4 } }; // Change this to which position(s) you want
-vector<int> delayReq[TOTAL_CHEEPS] = { { 16 }, { 16 }, { 16 }, { 16, 32, 72, 96 },{ 16 },{ 16 },{ 16 },{ 16, 32, 72, 96 } }; // Change this to which delay(s) you want
-vector<int> speedReq[TOTAL_CHEEPS] = { { 4 }, { 4 }, { 4 }, { 4 },{ 4 },{ 4 },{ 4 },{ 4 } }; // Change this to which speed(s) you want
-int pSpeeds[TOTAL_CHEEPS] = { 1, 1, 1, 1, 1, 1, 1, 1 }; // 0: speed = 0. 1: speed between 1 and 24, 2: speed above 24 or below 0
-int slots[TOTAL_CHEEPS] = { 3, 2, 1, 0,3, 2, 1, 0 }; // Change this to the slot that the cheep is spawning in (starting from slot 0)
+vector<int> posReq[TOTAL_CHEEPS] = { { 4 }, { 4 }}; // Change this to which position(s) you want
+vector<int> delayReq[TOTAL_CHEEPS] = { { 16 }, { 16 }}; // Change this to which delay(s) you want
+vector<int> speedReq[TOTAL_CHEEPS] = { { 4 }, { 4 }}; // Change this to which speed(s) you want
+int pSpeeds[TOTAL_CHEEPS] = { 0, 0 }; // 0: speed = 0. 1: speed between 1 and 24, 2: speed above 24 or below 0
+int slots[TOTAL_CHEEPS] = { 0, 3 }; // Change this to the slot that the cheep is spawning in (starting from slot 0)
 
-vector<vector<int>> cheepReq[TOTAL_CHEEPS] = { { { 16, 4, 4 } },
-										  { { 16, 4, 4 } },
-										  { { 16, 4, 4 } },
-										  { { 16, 4, 4 } },
-										  { { 16, 4, 4 } }, 
-										  { { 16, 4, 4 } }, 
-										  { { 16, 4, 4 } }, 
-										  { { 16, 4, 4 } } }; 
+vector<vector<int>> cheepReq[TOTAL_CHEEPS] = { { { 16, 2, 2 }, { 16, 0, 3 }, { 16, 0, 10 }, { 16, 3, 3 }, { 16, 3, 10 }, { 16, 1, 1 }, { 16, 1, 4 } },
+										  { { 16, 0, 11 }, { 16, 3, 11 }, { 16, 1, 2 }, { 16, 2, 6 }, { 32, 0, 11 },{ 32, 3, 11 },{ 32, 1, 2 },{ 32, 2, 6 },
+										    { 72, 0, 11 },{ 72, 3, 11 },{ 72, 1, 2 },{ 72, 2, 6 } ,{ 96, 0, 11 },{ 96, 3, 11 },{ 96, 1, 2 },{ 96, 2, 6 } }
+                                          }; 
 // Put every valid combination (delay, speed, pos in that order) for a particular cheep in the row corresponding to that cheep
 // For example, if the 2nd cheep can be delay 16, speed 3, pos 11 or delay 32, speed 1, pos 9, then the 2nd row should be { { 16, 3, 11 }, { 32, 1, 9 } },
 
@@ -73,6 +69,9 @@ int getPos(unsigned long long rng, int pSpeed, int slot) {
 }
 
 bool doBreak(int cheep1, int delay, int speed, int pos) {
+	if (cheep1 == 1 && delay == 72 && speed == 2 && pos == 6) {
+		delay = 72;
+	}
 	if (INPUT_TYPE) {
 		vector<int> thisCheep = { delay, speed, pos };
 		if (find(cheepReq[cheep1].begin(), cheepReq[cheep1].end(), thisCheep) == cheepReq[cheep1].end()) {
@@ -137,8 +136,10 @@ int main() {
 						if (doBreak(cheep1, delay, speed, pos)) {
 							break;
 						}
-						for (int j = 0; j < delay; ++j) {
-							advance(RNG2);
+						if (cheep1 != TOTAL_CHEEPS - 1) {
+							for (int j = 0; j < delay; ++j) {
+								advance(RNG2);
+							}
 						}
 						if (cheep1 == nextPause) {
 							done = true;
