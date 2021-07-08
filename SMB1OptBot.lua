@@ -1,3 +1,7 @@
+-- This is the SMB1 Movement Optimization Bot for use in FCEUX
+-- You must start running the bot from the savestate that the bot is supposed to start each attempt at
+-- Not all movements can be effectively optimized by this bot, only the movements with an effective isBetter function (see below)
+
 -- Input codes: 0: B, 1: B+R, 2: B+L, 3: B+L+R, 4: B+A, 5: B+R+A, 6: B+L+A, 7: B+L+R+A, 8~15 is same as 0~7 except you don't hold B, 16: D
 -- You can change this, but make sure to also change the findNextValid function
 local inputtable = {{ up = false, down = false, left = false, right = false, A = false, B = true, start = false, select = false },
