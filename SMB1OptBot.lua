@@ -7,7 +7,7 @@
 -- Input codes: 0: B, 1: B+R, 2: B+L, 3: B+L+R, 4: B+A, 5: B+R+A, 6: B+L+A, 7: B+L+R+A, 8~15 is same as 0~7 except you don't hold B, 16: D
 -- You can change this, but make sure to also change the findNextValid function
 local inputtable = {{ up = false, down = false, left = false, right = false, A = false, B = true, start = false, select = false },
-					{ up = false, down = false, left = true, right = false, A = false, B = true, start = false, select = false },
+					{ up = false, down = false, left = false, right = true, A = false, B = true, start = false, select = false },
 					{ up = false, down = false, left = true, right = false, A = false, B = true, start = false, select = false },
 					{ up = false, down = false, left = true, right = true, A = false, B = true, start = false, select = false },
 					{ up = false, down = false, left = false, right = false, A = true, B = true, start = false, select = false },
@@ -24,17 +24,25 @@ local inputtable = {{ up = false, down = false, left = false, right = false, A =
 					{ up = false, down = false, left = true, right = true, A = true, B = false, start = false, select = false },
 					{ up = false, down = true, left = false, right = false, A = false, B = false, start = false, select = false }}
 
+-- Function copied from https://gist.github.com/tylerneylon/81333721109155b2d244
+function copy(obj)
+    if type(obj) ~= 'table' then return obj end
+    local res = {}
+    for k, v in pairs(obj) do res[copy(k)] = copy(v) end
+    return res
+end
+
 -- Base Movement Optimization Bot (Do not change)
 
 local OptBot = {}
 
 -- frames: the number of frames the bot should bot, initial: the initial optimal end state that the bot would compare its solutions to,
--- debug: the number of cases after which the bot shows the current inputs that it is testing, set it to 1 if you don't want that
+-- debug: the number of cases after which the bot shows the current inputs that it is testing, elapsed time, and cases per second, set it to 1 if you don't want that
 function OptBot:new(frames, initial, debug)
 	local state = savestate.create(1)
 	savestate.save(state)
 	local inputs = {}
-    local bot = { states = {}, frames = frames, frame = frames, pframe = frames, inputs = {},
+    local bot = { states = {}, frames = frames, frame = frames, pframe = frames, inputs = {}, starttime = os.clock(),
 				  state = state, optimal = initial, optinputs = {}, debug = debug, cases = 0, done = false }
 	for i = 1, frames, 1 do
 		bot.inputs[i] = 0
@@ -86,6 +94,8 @@ end
 
 function OptBot:run()
 	emu.speedmode("turbo")
+	self.states = {}
+	self.done = false
 
 	while true do	
 		savestate.load(self.state)
@@ -96,6 +106,8 @@ function OptBot:run()
 		if self.cases % self.debug == 1 then
 			print("================================")
 			print(tostring(self.inputs))
+			print(string.format("total cases: %d\n", self.cases))
+			print(string.format("elapsed time: %.2f\n", os.clock() - self.starttime))
 		end
 	
 		for i = self.frame, 1, -1 do
@@ -154,8 +166,8 @@ function OptBot:run()
 			end			
 				
 			if self.frame == self.frames and self:isBestSolution(cstate, self.optimal) then
-				self.optimal = cstate
-				self.optinputs = self.inputs
+				self.optimal = copy(cstate)
+				self.optinputs = copy(self.inputs)
 				print("*************** NEW BEST ****************")
 				print(tostring(cstate))
 				print(tostring(self.inputs))
@@ -163,13 +175,13 @@ function OptBot:run()
 		end
 	end
 
-	emu.speedmode("normal")
+	-- emu.speedmode("normal")
 	print("---------------- DONE -----------------")
 	print(tostring(self.optimal))
 	print(tostring(self.optinputs))
-	while true do
-		emu.frameadvance()
-	end
+	-- while true do
+		-- emu.frameadvance()
+	-- end
 end
 
 -- Fast Acceleration Bot (Example)
@@ -213,4 +225,75 @@ function FABot:isBestSolution(cstate)
 	return cstate.xpos > self.optimal.xpos
 end
 
-FABot:new(35, { xpos = 0 }, 200):run()
+-- FABot:new(35, { xpos = 0 }, 50):run()
+
+-- Flagpole Glitch Bot (Example)
+
+local FPGBot = OptBot:new(1)
+
+function FPGBot:findNextValid(input)
+	if input >= 0 and input < 6 then
+		return input + 1
+	elseif input == 6 then
+		return 8
+	elseif input >= 8 and input < 11 then
+		return input + 1
+	else
+		return 0
+	end
+end
+
+function FPGBot:getCurrentState()
+	return { frame = self.frame,
+			 xpos = memory.readbyte(0x0086) * 16 + memory.readbyte(0x0400) / 16,
+			 xspeed = memory.readbytesigned(0x0057) * 64 + memory.readbyte(0x0705) / 4,
+			 xaccel = memory.readbyte(0x0701) * 64 + memory.readbyte(0x0702) / 4,
+			 facing = memory.readbyte(0x0033),
+			 playerstate = memory.readbyte(0x001d),
+			 startfacing = self.facing,
+			 startsubspeed = self.subspeed }
+end
+
+function FPGBot:getKeyFromState(cstate)
+	return (cstate.xspeed + 0x700) * 0x800 + cstate.xaccel * 4 + cstate.facing + 0.01
+end
+
+function FPGBot:isBetter(state1, state2)
+	return state1.xpos >= state2.xpos and state1.frame <= state2.frame
+end
+
+function FPGBot:furtherHeuristics(state)
+	return false
+end
+
+function FPGBot:isBestSolution(cstate)
+	return cstate.playerstate == 3 and cstate.xpos > self.optimal.xpos
+end
+
+function FPGBot:run2()
+	self.facing = 1
+	self.subspeed = 0
+	while self.facing <= 2 do
+		while self.subspeed <= 252 do
+			savestate.load(self.state)
+			memory.writebyte(0x0033, self.facing)
+			memory.writebyte(0x0705, self.subspeed)
+			local newstate = savestate.create(1)
+			savestate.save(newstate)
+			self.state = newstate
+			local optimalprev = copy(self.optimal)
+			self:run()
+			self.subspeed = self.subspeed + 4
+		end
+		self.facing = self.facing + 1
+	end
+	emu.speedmode("normal")
+	print("---------------- REALLY DONE -----------------")
+	print(tostring(self.optimal))
+	print(tostring(self.optinputs))
+	while true do
+		emu.frameadvance()
+	end
+end
+
+FPGBot:new(6, { xpos = 0, playerstate = 0 }, 500):run2()
