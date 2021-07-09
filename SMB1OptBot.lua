@@ -165,7 +165,7 @@ function OptBot:run()
 				break
 			end			
 				
-			if self.frame == self.frames and self:isBestSolution(cstate, self.optimal) then
+			if self:isBestSolution(cstate, self.optimal) then
 				self.optimal = copy(cstate)
 				self.optinputs = copy(self.inputs)
 				print("*************** NEW BEST ****************")
@@ -222,7 +222,7 @@ function FABot:furtherHeuristics(state)
 end
 
 function FABot:isBestSolution(cstate)
-	return cstate.xpos > self.optimal.xpos
+	return self.frame == self.frames and cstate.xpos > self.optimal.xpos
 end
 
 -- FABot:new(35, { xpos = 0 }, 50):run()
@@ -267,7 +267,7 @@ function FPGBot:furtherHeuristics(state)
 end
 
 function FPGBot:isBestSolution(cstate)
-	return cstate.playerstate == 3 and cstate.xpos > self.optimal.xpos
+	return self.frame == self.frames and cstate.playerstate == 3 and cstate.xpos > self.optimal.xpos
 end
 
 function FPGBot:run2()
@@ -296,4 +296,83 @@ function FPGBot:run2()
 	end
 end
 
-FPGBot:new(6, { xpos = 0, playerstate = 0 }, 500):run2()
+-- FPGBot:new(6, { xpos = 0, playerstate = 0 }, 500):run2()
+
+-- 4-2 Coin Clip Bot
+
+local CCBot = OptBot:new(1)
+
+function CCBot:findNextValid(input)
+	if self.frame <= 19 then
+		if input < 2 then
+			return input + 1
+		else
+			return 0
+		end
+	else
+		if input >= 0 and input < 6 then
+			return input + 1
+		elseif input == 6 then
+			return 8
+		elseif input >= 8 and input < 11 then
+			return input + 1
+		else
+			return 0
+	end
+	end
+end
+
+function CCBot:getCurrentState()
+	return { frame = self.frame,
+			 screenx = memory.readbyte(0x03ad) * 16 + memory.readbyte(0x0400) / 16,
+			 xspeed = memory.readbytesigned(0x0057) * 64 + memory.readbyte(0x0705) / 4,
+			 xaccel = memory.readbyte(0x0701) * 64 + memory.readbyte(0x0702) / 4,
+			 facing = memory.readbyte(0x0033),
+			 coltimer = memory.readbyte(0x0785),
+			 startsubpix = self.subpix,
+			 startsubspeed = self.subspeed }
+end
+
+function CCBot:getKeyFromState(cstate)
+	return cstate.xaccel * 4 + cstate.facing
+end
+
+function CCBot:isBetter(state1, state2)
+	return state1.screenx >= state2.screenx and state1.xspeed >= state2.xspeed and state1.frame <= state2.frame
+end
+
+function CCBot:furtherHeuristics(state)
+	return false
+end
+
+function CCBot:isBestSolution(cstate)
+	return cstate.coltimer == 1 and cstate.screenx > self.optimal.screenx
+end
+
+function CCBot:run2()
+	self.subpix = 0
+	self.subspeed = 0
+	while self.subpix < 16 do
+		while self.subspeed <= 252 do
+			savestate.load(self.state)
+			memory.writebyte(0x0400, self.subpix)
+			memory.writebyte(0x0705, self.subspeed)
+			local newstate = savestate.create(1)
+			savestate.save(newstate)
+			self.state = newstate
+			local optimalprev = copy(self.optimal)
+			self:run()
+			self.subspeed = self.subspeed + 4
+		end
+		self.subpix = self.subpix + 1
+	end
+	emu.speedmode("normal")
+	print("---------------- REALLY DONE -----------------")
+	print(tostring(self.optimal))
+	print(tostring(self.optinputs))
+	while true do
+		emu.frameadvance()
+	end
+end
+
+CCBot:new(24, { screenx = 0 }, 500):run2()
