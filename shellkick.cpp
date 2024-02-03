@@ -96,10 +96,10 @@ void output(int cointoss) {
 
 int main() {
 	if (DO_JUMP) {
-		for (jumpFrames = 1; jumpFrames < 10; ++jumpFrames)
+		for (jumpFrames = 1; jumpFrames <= MAX_JUMP_FRAMES; ++jumpFrames)
 			solve(Y_FLOOR, JUMP_INIT, 0, 0);
 		output(0);
-		for (jumpFrames = 1; jumpFrames < 10; ++jumpFrames)
+		for (jumpFrames = 1; jumpFrames <= MAX_JUMP_FRAMES; ++jumpFrames)
 			solve(Y_FLOOR + JUMP_INIT, JUMP_INIT + JUMP_GRAVITY, 1, 0);
 		output(1);
 	}
